@@ -5,6 +5,8 @@
         body { width: 300px; padding: 10px;}
         .container {display: flex; flex-direction: column; gap: 10px;}
         button {padding: 5px; cursor: pointer}
+        #stats { margin-top: 20px;}
+        .stat-item {margin: 5px 0;}
     </style>
 </head>
 <body>
@@ -12,13 +14,20 @@
     <h1>Adfriend!</h1>
    <label>
     <input type="checkbox" id="quotes" checked>
-    Show motivationa; Quotes
+    Show motivational Quotes
    </label>
    <label>
     <input type="checkbox" id="reminders" checked>
     Show activity reminders
    </label>
    <button id="save" >Save Settings</button>
+
+   <div id="stats">
+    <h3>Statics</h3>
+    <div id="currentPage"></div>
+    <div id="totalStats"></div>
+    <button id="clearStats">Clear Statistics</button>
+   </div>
 </div>
 <script src="popup.js"></script>
 </body>

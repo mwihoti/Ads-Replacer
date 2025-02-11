@@ -1,5 +1,4 @@
-document.addEventListener("DOMContentLoaded", function () {
-    const quotes = [
+ const quotes = [
         "Believe in yourself! Every day is a new begining",
         "Success is not final, failure is not fatal: it is the courage to continue that counts.",
         "Your limitation-it's only your imagination.",
@@ -24,25 +23,67 @@ document.addEventListener("DOMContentLoaded", function () {
     ];
 
     
-
+    function getRandomItem(array) {
+      return array[Math.floor(Math.random() * array.length)]
+    }
     
+    function createWidget(type) {
+      const widget =  document.createElement('div');
+      widget.style.cssText = `
+        padding: 15px;
+        margin: 10px;
+        border-radius: 8px;
+        background: linear-gradient(135deg, #6e8efb, #a777e3);
+        color: white;
+        font-family: Arial, sans-serif;
+        text-align: center;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      `;
+      widget.textContent = type === 'quote' ? getRandomItem(quotes) : getRandomItem(reminders);
+      return widget;
+    }
+
     function getRandomQuotes() {
         return quotes[Math.floor(Math.random() * quotes.length)];
     }
 
     function replaceAds() {
-        const adElements = document.querySelectorAll("[id*=ad], .ad, .ads");
-        adElements.forEach(ad => {
-          ad.style.display = "none";
-          const quoteBox = document.createElement("div");
-          quoteBox.innerHTML = `<div class='quote-widget'>
-                                  <p>${getRandomQuote()}</p>
-                                </div>`;
-          quoteBox.classList.add("styled-widget");
-          ad.parentNode?.insertBefore(quoteBox, ad);
-        });
+        chrome.storage.sync.get('settings', (data) => {
+          const settings = data.settings || { showQuotes: true, showReminders: true};
+
+          // common ad selectors
+          const adSelectors = [
+              '[class*="ad-"]',
+              '[class*="advertisement"]',
+              '[id*="ad-"]',
+              '[id*="advertisement"]',
+              '[aria-label*="advertisement"]',
+              'ins.adsbygoogle'            
+          ];
+
+          const adElements = document.querySelectorAll(adSelectors.join(','));
+
+          adElements.forEach((ad) => {
+            if (ad.dataset.processed) return;
+
+            const widgetType = Math.random() <0.5 && settings.showQuotes ? 'quote' : 'reminder';
+            if ((widgetType === 'quote' && settings.showQuotes) || 
+                (widgetType === 'reminder' && settings.showReminders)) {
+                  const widget = createWidget(widgetType);
+                  ad.parentNode.replaceChild(widget, ad);
+                }
+                ad.dataset.processed = 'true';
+          })
+        })
       }
+  replaceAds();
+
+  // Watch for dynamic content changes
+
+const observer = new MutationObserver(replaceAds);
+observer.observe(document.body, {
+  childList: true,
+  subtree: true
+})
       
-      replaceAds();
-      setInterval(replaceAds, 10000); // Refresh quotes every 10 seconds
-    });
+ 
