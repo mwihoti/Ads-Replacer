@@ -90,6 +90,18 @@ document.getElementById('addReminder').addEventListener('click', () => {
         });
     });
 });
+// Edit reminder
+window.editReminder = function (index) {
+    chrome.storage.sync.get('customReminders', (data) => {
+        const reminders = data.customReminders || [];
+        const newText = prompt('Edit your reminder: ', reminders[index].text);
+
+        if (newText) {
+            reminders[index].text = newText;
+            chrome.storage.sync.set({ customReminders: reminders }, loadReminders);          
+        }
+    })
+}
 
 // Delete reminder
 window.deleteReminder = function(index) {
