@@ -1,34 +1,148 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <style>
-        body { width: 300px; padding: 10px;}
-        .container {display: flex; flex-direction: column; gap: 10px;}
-        button {padding: 5px; cursor: pointer}
-        #stats { margin-top: 20px;}
-        .stat-item {margin: 5px 0;}
-    </style>
+  <style>
+    body { 
+      width: 400px; 
+      padding: 10px; 
+      font-family: Arial, sans-serif; 
+    }
+    .container { 
+      display: flex; 
+      flex-direction: column; 
+      gap: 10px; 
+    }
+    .tab-container { 
+      display: flex; 
+      gap: 10px; 
+      margin-bottom: 15px; 
+    }
+    .tab { 
+      padding: 8px 16px; 
+      cursor: pointer; 
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+    .tab.active { 
+      background: linear-gradient(135deg, #6e8efb, #a777e3);
+      color: white;
+    }
+    .tab-content { 
+      display: none; 
+    }
+    .tab-content.active { 
+      display: block; 
+    }
+    button { 
+      padding: 8px;
+      cursor: pointer;
+      background: linear-gradient(135deg, #6e8efb, #a777e3);
+      color: white;
+      border: none;
+      border-radius: 4px;
+    }
+    .reminder-form {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+    .reminder-list {
+      max-height: 200px;
+      overflow-y: auto;
+    }
+    .reminder-item, .note-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px;
+      border: 1px solid #ddd;
+      margin: 5px 0;
+      border-radius: 4px;
+    }
+    .progress-container {
+      margin: 10px 0;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+    .progress-bar {
+      height: 20px;
+      background: #f0f0f0;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(135deg, #6e8efb, #a777e3);
+      transition: width 0.3s ease;
+    }
+    input, select, textarea { 
+      padding: 8px; 
+      border: 1px solid #ddd; 
+      border-radius: 4px; 
+    }
+    .note-item {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+    .note-item button {
+      margin-top: 5px;
+    }
+  </style>
 </head>
 <body>
-    <div class="container">
-    <h1>Adfriend!</h1>
-   <label>
-    <input type="checkbox" id="quotes" checked>
-    Show motivational Quotes
-   </label>
-   <label>
-    <input type="checkbox" id="reminders" checked>
-    Show activity reminders
-   </label>
-   <button id="save" >Save Settings</button>
+  <div class="container">
+    <div class="tab-container">
+      <div class="tab active" data-tab="settings">Settings</div>
+      <div class="tab" data-tab="reminders">Reminders</div>
+      <div class="tab" data-tab="notes">Notes</div>
+      <div class="tab" data-tab="progress">Progress</div>
+    </div>
 
-   <div id="stats">
-    <h3>Statics</h3>
-    <div id="currentPage"></div>
-    <div id="totalStats"></div>
-    <button id="clearStats">Clear Statistics</button>
-   </div>
-</div>
-<script src="popup.js"></script>
+    <div id="settings" class="tab-content active">
+      <h2>AdFriend Settings</h2>
+      <label>
+        <input type="checkbox" id="quotes" checked>
+        Show Motivational Quotes
+      </label>
+      <label>
+        <input type="checkbox" id="remindersToggle" checked>
+        Show Activity Reminders
+      </label>
+      <button id="save">Save Settings</button>
+    </div>
+
+    <div id="reminders" class="tab-content">
+      <h2>Manage Reminders</h2>
+      <div class="reminder-form">
+        <input type="text" id="reminderText" placeholder="Enter reminder text">
+        <select id="reminderFrequency">
+          <option value="hourly">Hourly</option>
+          <option value="daily">Daily</option>
+          <option value="weekly">Weekly</option>
+        </select>
+        <select id="reminderCategory">
+          <option value="health">Health</option>
+          <option value="productivity">Productivity</option>
+          <option value="wellness">Wellness</option>
+          <option value="custom">Custom</option>
+        </select>
+        <button id="addReminder">Add Reminder</button>
+      </div>
+      <div class="reminder-list" id="reminderList"></div>
+    </div>
+
+    <div id="notes" class="tab-content">
+      <h2>Notes</h2>
+      <div id="notesContainer"></div>
+    </div>
+
+    <div id="progress" class="tab-content">
+      <h2>Progress Tracking</h2>
+      <div id="progressStats"></div>
+    </div>
+  </div>
+  <script src="popup.js"></script>
 </body>
 </html>
