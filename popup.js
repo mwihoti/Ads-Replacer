@@ -198,3 +198,25 @@ function updateProgress() {
         `).join('');
     });
 }
+
+function createFloatingPopup () {
+    const popup = document.createElement('div');
+    popup.style.cssText = `
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        width: 250px;
+        padding: 15px;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        font-family: Arial, sans-serif;
+    `;
+
+    // Title
+    const title = document.createElement('h3');
+    title.textContent = "Quick Add";
+    title.style.marginBottom = "10px";
+
+    
+}
