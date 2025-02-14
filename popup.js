@@ -139,12 +139,11 @@ function deleteReminder (index) {
    function loadNotes() {
     chrome.storage.sync.get('notes', (data) => {
         const notes = data.notes || [];
-        console.log('Loaded notes:', notes); // Debug log
         const notesContainer = document.getElementById('notesContainer');
         notesContainer.innerHTML = '';
 
         if (notes.length === 0) {
-            notesContainer.innerHTML = `<p>No notes yet. Add one!</p>`;
+            notesContainer.innerHTML = '<p>No notes yet. Add one!</p>';
             return;
         }
 
@@ -156,72 +155,68 @@ function deleteReminder (index) {
                 <p>${note.text}</p>
                 <small>Created: ${new Date(note.created).toLocaleDateString()}</small>
                 ${note.associated_reminder ? `<small>Reminder: ${note.associated_reminder}</small>` : ''}
-                <button class="edit-note">Edit</button>
-                <button class="delete-note">Delete</button>
+                <div class="note-actions">
+                    <button class="edit-note">Edit</button>
+                    <button class="delete-note">Delete</button>
+                </div>
             `;
             notesContainer.appendChild(div);
         });
     });
 }
 
-
-// Add note
-document.getElementById('addNote').addEventListener('click', () => {
-    const text = document.getElementById('noteText').value;
-    if (!text) return;
-
+// Delete note function
+function deleteNote(index) {
     chrome.storage.sync.get('notes', (data) => {
-        const notes = data.notes || [];
-        notes.push({
-            text,
-            created: new Date().toISOString()
-        });
-
+        let notes = data.notes || [];
+        notes.splice(index, 1);
         chrome.storage.sync.set({ notes }, () => {
-            document.getElementById('noteText').value = '';
-            loadNotes();
+            loadNotes(); // Reload notes after deletion
         });
     });
-});
+}
 
-
-// Edit delegation Attach click event to edit reminder list
-document.getElementById('notesContainer').addEventListener('click', (event) => {
-    const noteItem = event.target.closest('.note-item');
-    if (!noteItem) return;  // Prevent errors if clicked outside
-    const index = noteItem.dataset.index;
-    
-    if (event.target.classList.contains('delete-note')) {
-        console.log("Delete button clicked for index:", index);
-        deleteNote(index);
-    } else if (event.target.classList.contains('edit-note')) {
-        console.log("Edit button clicked for index:", index);
-        editNote(index);
-    }
-});
-// function EditNote
+// Edit note function
 function editNote(index) {
     chrome.storage.sync.get('notes', (data) => {
         let notes = data.notes || [];
-        const newText = prompt('Edit your note:', notes[index]?.text || '');
-        if (newText) {
-            notes[index].text = newText;
-            chrome.storage.sync.set({ notes }, loadNotes);
+        const note = notes[index];
+        if (!note) return;
+
+        const newText = prompt('Edit your note:', note.text);
+        if (newText && newText.trim()) {
+            notes[index] = {
+                ...note,
+                text: newText.trim(),
+                lastEdited: new Date().toISOString()
+            };
+            
+            chrome.storage.sync.set({ notes }, () => {
+                loadNotes(); // Reload notes after editing
+            });
         }
     });
 }
 
-// Delete note
-function editNote(index) {
-    chrome.storage.sync.get('notes', (data) => {
-        let notes = data.notes || [];
-        const newText = prompt('Edit your note:', notes[index]?.text || '');
-        if (newText) {
-            notes[index].text = newText;
-            chrome.storage.sync.set({ notes }, loadNotes);
+// Event listener for note actions
+document.addEventListener('DOMContentLoaded', () => {
+    // Event delegation for note actions
+    document.getElementById('notesContainer').addEventListener('click', (event) => {
+        const noteItem = event.target.closest('.note-item');
+        if (!noteItem) return;
+
+        const index = parseInt(noteItem.getAttribute('data-index'), 10);
+        
+        if (event.target.classList.contains('delete-note')) {
+            deleteNote(index);
+        } else if (event.target.classList.contains('edit-note')) {
+            editNote(index);
         }
     });
-}
+
+    // Load notes when popup opens
+    loadNotes();
+});
 
 
 /* ==============================
