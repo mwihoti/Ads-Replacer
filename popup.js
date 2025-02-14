@@ -136,31 +136,34 @@ function deleteReminder (index) {
 /* ==============================
    📝 Notes Management
    ============================== */
-function loadNotes() {
+   function loadNotes() {
     chrome.storage.sync.get('notes', (data) => {
         const notes = data.notes || [];
+        console.log('Loaded notes:', notes); // Debug log
         const notesContainer = document.getElementById('notesContainer');
         notesContainer.innerHTML = '';
 
         if (notes.length === 0) {
-            notesContainer.innerHTML = `<p>No notes yet. Add a new note!</p>`;
+            notesContainer.innerHTML = `<p>No notes yet. Add one!</p>`;
             return;
         }
 
         notes.forEach((note, index) => {
-            const noteElement = document.createElement('div');
-            noteElement.className = 'note-item';
-            noteElement.innerHTML = `
+            const div = document.createElement('div');
+            div.className = 'note-item';
+            div.setAttribute('data-index', index);
+            div.innerHTML = `
                 <p>${note.text}</p>
                 <small>Created: ${new Date(note.created).toLocaleDateString()}</small>
                 ${note.associated_reminder ? `<small>Reminder: ${note.associated_reminder}</small>` : ''}
                 <button class="edit-note">Edit</button>
                 <button class="delete-note">Delete</button>
             `;
-            notesContainer.appendChild(noteElement);
+            notesContainer.appendChild(div);
         });
     });
 }
+
 
 // Add note
 document.getElementById('addNote').addEventListener('click', () => {
@@ -181,14 +184,45 @@ document.getElementById('addNote').addEventListener('click', () => {
     });
 });
 
-// Delete note
-function deleteNote (index) {
+
+// Edit delegation Attach click event to edit reminder list
+document.getElementById('notesContainer').addEventListener('click', (event) => {
+    const noteItem = event.target.closest('.note-item');
+    if (!noteItem) return;  // Prevent errors if clicked outside
+    const index = noteItem.dataset.index;
+    
+    if (event.target.classList.contains('delete-note')) {
+        console.log("Delete button clicked for index:", index);
+        deleteNote(index);
+    } else if (event.target.classList.contains('edit-note')) {
+        console.log("Edit button clicked for index:", index);
+        editNote(index);
+    }
+});
+// function EditNote
+function editNote(index) {
     chrome.storage.sync.get('notes', (data) => {
-        const notes = data.notes || [];
-        notes.splice(index, 1);
-        chrome.storage.sync.set({ notes }, loadNotes);
+        let notes = data.notes || [];
+        const newText = prompt('Edit your note:', notes[index]?.text || '');
+        if (newText) {
+            notes[index].text = newText;
+            chrome.storage.sync.set({ notes }, loadNotes);
+        }
     });
-};
+}
+
+// Delete note
+function editNote(index) {
+    chrome.storage.sync.get('notes', (data) => {
+        let notes = data.notes || [];
+        const newText = prompt('Edit your note:', notes[index]?.text || '');
+        if (newText) {
+            notes[index].text = newText;
+            chrome.storage.sync.set({ notes }, loadNotes);
+        }
+    });
+}
+
 
 /* ==============================
    📊 Progress Tracking
