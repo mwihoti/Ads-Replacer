@@ -295,3 +295,8 @@ function createFloatingPopup () {
 
     document.body.appendChild(popup);
 }
+
+//open floating popup when extension icon is clicked
+chrome.browserAction.clicked.addListener(() => {
+    createFloatingPopup();
+})

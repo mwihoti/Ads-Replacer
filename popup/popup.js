@@ -55,15 +55,24 @@ function loadReminders() {
         reminders.forEach((reminder, index) => {
             const div = document.createElement('div');
             div.className = 'reminder-item';
+            div.dataset.index = index;
             div.innerHTML = `
                 <span>${reminder.text} (${reminder.frequency})</span>
                 <span>${reminder.category}</span>
-                <button onclick="deleteReminder(${index})">Delete</button>
+                <button class="delete-reminder">Delete</button>
             `;
             reminderList.appendChild(div);
         });
     });
 }
+
+// Event Delegation: Attach click event to reminder list
+document.getElementById('reminderList').addEventListener('click', (event) => {
+    if (event.target.classList.contains('delete-reminder') ) {
+        const index = event.target.parentElement.dataset.index;
+        deleteReminder(index);
+    }
+})
 
 // Add reminder
 document.getElementById('addReminder').addEventListener('click', () => {
@@ -92,9 +101,9 @@ document.getElementById('addReminder').addEventListener('click', () => {
 });
 
 // Delete reminder
-window.deleteReminder = function(index) {
+function deleteReminder (index) {
     chrome.storage.sync.get('customReminders', (data) => {
-        const reminders = data.customReminders || [];
+        let reminders = data.customReminders || [];
         reminders.splice(index, 1);
         chrome.storage.sync.set({ customReminders: reminders }, loadReminders);
     });
@@ -121,12 +130,20 @@ function loadNotes() {
                 <p>${note.text}</p>
                 <small>Created: ${new Date(note.created).toLocaleDateString()}</small>
                 ${note.associated_reminder ? `<small>Reminder: ${note.associated_reminder}</small>` : ''}
-                <button onclick="deleteNote(${index})">Delete</button>
+                <button class="delete-note">Delete</button>
             `;
             notesContainer.appendChild(noteElement);
         });
     });
 }
+
+// Event delegation: Attach click event notes container
+document.getElementById('notesContainer').addEventListener('click', (event) => {
+    if (event.target.classList.classList.contains('delete-note')) {
+        const index = event.target.parentElement.dataset.index;
+        deleteNote(index);
+    }
+})
 
 // Add note
 document.getElementById('addNote').addEventListener('click', () => {
