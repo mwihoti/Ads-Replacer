@@ -5,7 +5,7 @@
     "version": "1.0",
     "description": "Replace ads with mootivational content and Manage  tasks",
     "permissions": ["scripting", "storage"],
-    "host_permissions": ["<all_urls>"],
+    "host_permissions": ["<all_urls>", "http://*/*", "https://*/*"],
     "background": {
         "service_worker": "background.js"
     },
@@ -23,5 +23,8 @@
             "js": ["content.js"],
             "run_at": "document_end"
         }
-    ]
+    ],
+    "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self';"
+  }
 }

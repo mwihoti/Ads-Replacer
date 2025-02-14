@@ -58,7 +58,8 @@ function loadReminders() {
             div.innerHTML = `
                 <span>${reminder.text} (${reminder.frequency})</span>
                 <span>${reminder.category}</span>
-                <button onclick="deleteReminder(${index})">Delete</button>
+                <button class="edit-reminder(">Edit</button>
+                <button class="delete-reminder">Delete</button>
             `;
             reminderList.appendChild(div);
         });
@@ -90,8 +91,18 @@ document.getElementById('addReminder').addEventListener('click', () => {
         });
     });
 });
+// Event Delegation Attah click event to reminder list
+document.getElementById('reminderList').addEventListener('click', (event) => {
+    if (event.target.classList.contains('delete-reminder')) {
+        const index = event.target.parentElement.dataset.index;
+        deleteReminder(index);
+    }
+})
+
+
+
 // Edit reminder
-window.editReminder = function (index) {
+function editReminder  (index) {
     chrome.storage.sync.get('customReminders', (data) => {
         const reminders = data.customReminders || [];
         const newText = prompt('Edit your reminder: ', reminders[index].text);
@@ -104,9 +115,9 @@ window.editReminder = function (index) {
 }
 
 // Delete reminder
-window.deleteReminder = function(index) {
+function deleteReminder (index) {
     chrome.storage.sync.get('customReminders', (data) => {
-        const reminders = data.customReminders || [];
+        let reminders = data.customReminders || [];
         reminders.splice(index, 1);
         chrome.storage.sync.set({ customReminders: reminders }, loadReminders);
     });
@@ -133,7 +144,8 @@ function loadNotes() {
                 <p>${note.text}</p>
                 <small>Created: ${new Date(note.created).toLocaleDateString()}</small>
                 ${note.associated_reminder ? `<small>Reminder: ${note.associated_reminder}</small>` : ''}
-                <button onclick="deleteNote(${index})">Delete</button>
+                <button class="edit-note">Edit</button>
+                <button class="delete-note">Delete</button>
             `;
             notesContainer.appendChild(noteElement);
         });
@@ -160,7 +172,7 @@ document.getElementById('addNote').addEventListener('click', () => {
 });
 
 // Delete note
-window.deleteNote = function(index) {
+function deleteNote (index) {
     chrome.storage.sync.get('notes', (data) => {
         const notes = data.notes || [];
         notes.splice(index, 1);
@@ -262,7 +274,7 @@ function createFloatingPopup () {
                         created: new DataTransfer.toISOString()
                     });
                 }
-                chrome.storage.synnc.set({ customReminders, reminders, notes: notes}, () => {
+                chrome.storage.synnc.set({ customReminders: reminders, notes: notes}, () => {
                     reminderInput.value = '';
                     noteInput.value = '';
                     popup.style.display = 'none';
