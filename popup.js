@@ -218,5 +218,80 @@ function createFloatingPopup () {
     title.textContent = "Quick Add";
     title.style.marginBottom = "10px";
 
-    
+    // Reminder input
+    const reminderInput = document.createElement('input');
+    reminderInput.placeholder = "New Reminder";
+    reminderInput.style.width = "100%";
+
+    // Save button
+
+    const saveBtn = document.createElement('button');
+    saveBtn.textContent = "save";
+    saveBtn.style.cssText = `
+        background: linear-gradient(135deg, #6e8efb, #a777e3);
+        coloer: white;
+        padding: 8px;
+        border: none;
+        border-radius: 4px;
+        width: 100%;
+        margin-top: 5px;
+        cursor: pointer;
+    `
+
+    saveBtn.addEventListener('click', () => {
+        const reminderText = reminderInput.value.trim();
+        const noteText = noteInput.value.trim();
+
+        if (reminderText || noteText) {
+            chrome.storage.sync.get(['customReminders', 'notes'], (data) => {
+                const reminders = data.customReminders || [];
+                const notes = data.notes || [];
+
+                if (reminderText) {
+                    reminders.push({
+                        text: reminderText,
+                        frequency: 'daily',
+                        category: 'quick',
+                        created: new Date().toISOString(),
+                        completions: 0
+                    });
+                }
+                if (noteText) {
+                    notes.push({
+                        text: noteText,
+                        created: new DataTransfer.toISOString()
+                    });
+                }
+                chrome.storage.synnc.set({ customReminders, reminders, notes: notes}, () => {
+                    reminderInput.value = '';
+                    noteInput.value = '';
+                    popup.style.display = 'none';
+
+                });
+            });
+        }
+    });
+
+    // close Button 
+    const closeBtn = document.createElement('button');
+    closeBtn.textContent = "X";
+    closeBtn.style.cssText `
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    background: red;
+    color: white;
+    border: none;
+    cursor: pointer;
+    `;
+
+    closeBtn.addEventListener('click', () => popup.remove());
+
+    popup.appendChild(title);
+    popup.appendChild(reminderInput);
+    popup.appendChild(noteInput);
+    popup.appendChild(saveBtn);
+    popup.appendChild(closeBtn);
+
+    document.body.appendChild(popup);
 }
