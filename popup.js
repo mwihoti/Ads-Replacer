@@ -55,10 +55,11 @@ function loadReminders() {
         reminders.forEach((reminder, index) => {
             const div = document.createElement('div');
             div.className = 'reminder-item';
+            div.setAttribute('data-index', index);
             div.innerHTML = `
                 <span>${reminder.text} (${reminder.frequency})</span>
                 <span>${reminder.category}</span>
-                <button class="edit-reminder(">Edit</button>
+                <button class="edit-reminder">Edit</button>
                 <button class="delete-reminder">Delete</button>
             `;
             reminderList.appendChild(div);
@@ -91,7 +92,7 @@ document.getElementById('addReminder').addEventListener('click', () => {
         });
     });
 });
-// Event Delegation Attah click event to reminder list
+// Event Delegation Attah click event to delete reminder list
 document.getElementById('reminderList').addEventListener('click', (event) => {
     if (event.target.classList.contains('delete-reminder')) {
         const index = event.target.parentElement.dataset.index;
@@ -100,12 +101,20 @@ document.getElementById('reminderList').addEventListener('click', (event) => {
 })
 
 
+// Edit delegation Attach click event to edit reminder list
+document.getElementById('reminderList').addEventListener('click', (event) => {
+    if (event.target.classList.contains('edit-reminder')) {
+        const reminderItem  = event.target.closest( '.reminder-item');
+        if (!reminderItem) return;
+        const index = parseInt(reminderItem.getAttribute('data-index'), 10);
+        editReminder(index);
+    }
+})
 
-// Edit reminder
-function editReminder  (index) {
+function editReminder(index) {
     chrome.storage.sync.get('customReminders', (data) => {
-        const reminders = data.customReminders || [];
-        const newText = prompt('Edit your reminder: ', reminders[index].text);
+       let reminders = data.customReminders || [];
+        const newText = prompt('Edit your reminder: ', reminders[index]?.text || '');
 
         if (newText) {
             reminders[index].text = newText;
@@ -113,6 +122,7 @@ function editReminder  (index) {
         }
     })
 }
+// Event Delegation 
 
 // Delete reminder
 function deleteReminder (index) {
