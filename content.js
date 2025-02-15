@@ -5,8 +5,15 @@ const quotes = [
   "Small steps lead to big changes.",
   "Your potential is limitless!"
 ];
+const DEFAULT_QUOTES = [
+  "Believe you can and you're halfway there.",
+  "You are capable of amazing things!",
+  "Make today amazing!",
+  "Small steps lead to big changes.",
+  "Your potential is limitless!"
+];
 
-const reminders = [
+const DEFAULT_REMINDERS = [
   "Time for a water break!",
   "Have you done your burpees today?",
   "Remember to stretch!",
@@ -14,14 +21,64 @@ const reminders = [
   "Stand up and move around!"
 ];
 
-function getRandomItem(array) {
-  return array[Math.floor(Math.random() * array.length)];
+// Keep track of used reminders to prevent repetition
+let usedReminders = new Set();
+
+// Modified getRandomItem to handle both custom and default items with better distribution
+function getRandomItem(type) {
+  return new Promise((resolve) => {
+    if (type === 'quote') {
+      resolve(DEFAULT_QUOTES[Math.floor(Math.random() * DEFAULT_QUOTES.length)]);
+    } else if (type === 'reminder') {
+      chrome.storage.sync.get('customReminders', (data) => {
+        const customReminders = data.customReminders || [];
+        let availableReminders = [];
+
+        // If we have less than 2 custom reminders, combine with default reminders
+        if (customReminders.length < 2) {
+          // Add custom reminders first
+          availableReminders = customReminders.map(r => r.text);
+          
+          // Add default reminders
+          DEFAULT_REMINDERS.forEach(reminder => {
+            if (!usedReminders.has(reminder)) {
+              availableReminders.push(reminder);
+            }
+          });
+        } else {
+          // Use only custom reminders if we have enough
+          availableReminders = customReminders.map(r => r.text);
+        }
+
+        // Filter out already used reminders
+        availableReminders = availableReminders.filter(r => !usedReminders.has(r));
+
+        // If all reminders have been used, reset the tracking
+        if (availableReminders.length === 0) {
+          usedReminders.clear();
+          availableReminders = customReminders.length < 2 
+            ? [...customReminders.map(r => r.text), ...DEFAULT_REMINDERS]
+            : customReminders.map(r => r.text);
+        }
+
+        // Select a random reminder from available ones
+        const randomIndex = Math.floor(Math.random() * availableReminders.length);
+        const selectedReminder = availableReminders[randomIndex];
+        
+        // Track this reminder as used
+        usedReminders.add(selectedReminder);
+        
+        resolve(selectedReminder);
+      });
+    }
+  });
 }
 
-function createSplitWidget() {
+// Modified createSplitWidget to use the new reminder system
+async function createSplitWidget() {
   return new Promise((resolve) => {
-    chrome.storage.sync.get('settings', (data) => {
-      const settings = data.settings || { showQuotes: true, showReminders: true};
+    chrome.storage.sync.get('settings', async (data) => {
+      const settings = data.settings || { showQuotes: true, showReminders: true };
       const widgetContainer = document.createElement('div');
       widgetContainer.style.cssText = `
         display: flex;
@@ -35,72 +92,58 @@ function createSplitWidget() {
         box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         min-width: 300px;
       `;
-      // Only create and append quote section if quotes are enabled
+
+      // Handle quotes section
       if (settings.showQuotes) {
         const quoteSection = document.createElement('div');
         quoteSection.style.cssText = `
-        padding: 15px;
-        border-radius: 8px;
-        background: linear-gradient(135deg, #6e8efb, #a777e3);
-        color: white;
-        text-align: center;
+          padding: 15px;
+          border-radius: 8px;
+          background: linear-gradient(135deg, #6e8efb, #a777e3);
+          color: white;
+          text-align: center;
         `;
-        quoteSection.textContent = getRandomItem(quotes);
+        quoteSection.textContent = await getRandomItem('quote');
         widgetContainer.appendChild(quoteSection);
       }
 
-      // Only create and append reminder section if reminder are enabled
+      // Handle reminders section
       if (settings.showReminders) {
         const reminderSection = document.createElement('div');
         reminderSection.style.cssText = `
-        padding: 15px;
-        border-radius: 8px;
-        background: linear-gradient(135deg, #FF8c42, #FFA07A);
-        color: whitw;
-        text-align: center;
+          padding: 15px;
+          border-radius: 8px;
+          background: linear-gradient(135deg, #FF8C42, #FFA07A);
+          color: white;
+          text-align: center;
         `;
-        reminderSection.textContent = getRandomItem(reminders);
+        reminderSection.textContent = await getRandomItem('reminder');
         widgetContainer.appendChild(reminderSection);
       }
+
       resolve(widgetContainer);
-    })
-  })
-
-}
-  
-
-function updateStats(newStats) {
-  chrome.storage.sync.get(['stats', 'currentPageStats'], (data) => {
-    const stats = data.stats || {};
-    const currentPageStats = data.currentPageStats || {};
-    
-    // Update total stats
-    stats.totalAdsReplaced = (stats.totalAdsReplaced || 0) + newStats.adsReplaced;
-    stats.totalQuotesShown = (stats.totalQuotesShown || 0) + newStats.quotesShown;
-    stats.totalRemindersShown = (stats.totalRemindersShown || 0) + newStats.remindersShown;
-    
-    // Update current page stats
-    currentPageStats.url = window.location.href;
-    currentPageStats.adsReplaced = (currentPageStats.adsReplaced || 0) + newStats.adsReplaced;
-    currentPageStats.quotesShown = (currentPageStats.quotesShown || 0) + newStats.quotesShown;
-    currentPageStats.remindersShown = (currentPageStats.remindersShown || 0) + newStats.remindersShown;
-    
-    chrome.storage.sync.set({ stats, currentPageStats });
+    });
   });
 }
 
-function handleReminderCompletion(reminderText) {
-  chrome.storage.sync.get('reminderCompletions', (data) => {
-    const completions = data.reminderCompletions || {};
-    completions[reminderText] = (completions[reminderText] || 0) + 1;
-    chrome.storage.sync.set({ reminderCompletions });
-  });
+// Reset used reminders when page reloads or settings change
+function resetReminderTracking() {
+  usedReminders.clear();
 }
+
+// Modified message listener to handle resets
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.type === 'settingsUpdated' || message.type === 'remindersUpdated') {
+    resetReminderTracking();
+    window.location.reload();
+  }
+});
+
+// Modified replaceAds function to handle the new reminder system
 async function replaceAds() {
   chrome.storage.sync.get('settings', async (data) => {
     const settings = data.settings || { showQuotes: true, showReminders: true };
     
-    // Only proceed if at least one feature is enabled
     if (!settings.showQuotes && !settings.showReminders) return;
     
     const adSelectors = [
@@ -124,7 +167,7 @@ async function replaceAds() {
       if (ad.dataset.processed) continue;
       
       try {
-        const widget = await createSplitWidget(); // Add await here
+        const widget = await createSplitWidget();
         ad.parentNode.replaceChild(widget, ad);
         
         newStats.adsReplaced++;
@@ -143,14 +186,8 @@ async function replaceAds() {
   });
 }
 
-// Add message listener for settings updates
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message.type === 'settingsUpdated') {
-    window.location.reload();
-  }
-});
-
-// Initial replacement
+// Initialize
+resetReminderTracking();
 replaceAds();
 
 // Watch for dynamic content changes

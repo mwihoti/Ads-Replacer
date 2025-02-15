@@ -4,8 +4,7 @@
     "name": "AdFriend",
     "version": "1.0",
     "description": "Replace ads with mootivational content and Manage  tasks",
-    "permissions": ["scripting", "storage", "activeTab", "tabs"],
-    "host_permissions": ["<all_urls>", "http://*/*", "https://*/*"],
+    "permissions": ["scripting", "storage", "activeTab"],
     "background": {
         "service_worker": "background.js"
     },
@@ -19,7 +18,6 @@
     },
     "content_scripts": [
         {
-            "matches": ["<all_urls>"],
             "js": ["content.js"],
             "run_at": "document_end"
         }

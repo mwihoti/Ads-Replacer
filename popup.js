@@ -1,42 +1,116 @@
-document.addEventListener('DOMContentLoaded', function() {
-    // Tab switching logic
+// popup.js
+
+/* ==============================
+   🌟 Main Initialization
+   ============================== */
+   document.addEventListener('DOMContentLoaded', function() {
+    initializeTabs();
+    initializeSettings();
+    loadReminders();
+    loadNotes();
+    updateProgress();
+});
+
+/* ==============================
+   📑 Tab Management
+   ============================== */
+function initializeTabs() {
     document.querySelectorAll('.tab').forEach(tab => {
         tab.addEventListener('click', function() {
-            // Remove "active" class from all tabs and contents
+            // Remove active class from all tabs and contents
             document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
             document.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));
 
-            // Activate clicked tab and its corresponding content
+            // Activate clicked tab and its content
             this.classList.add('active');
             const contentId = this.getAttribute('data-tab');
-
-            // Ensure correct tab content is shown
             const tabContent = document.getElementById(contentId);
             if (tabContent) {
                 tabContent.classList.add('active');
             }
-           
         });
     });
-
-
-         
 
     // Ensure first tab is active on load
     const firstTab = document.querySelector('.tab.active');
     if (firstTab) {
         const firstTabContent = document.getElementById(firstTab.getAttribute('data-tab'));
         if (firstTabContent) {
-            firstTabContent.classList.add('active')
+            firstTabContent.classList.add('active');
         }
     }
+}
 
-    // Load initial data
-    loadReminders();
-    loadNotes();
-    updateProgress();
-});
+/* ==============================
+   ⚙️ Settings Management
+   ============================== */
+function initializeSettings() {
+    loadSavedSettings();
+    const saveButton = document.getElementById('save');
+    if (saveButton) {
+        saveButton.addEventListener('click', saveSettings);
+    }
+}
 
+function loadSavedSettings() {
+    chrome.storage.sync.get('settings', function(data) {
+        console.log('Loading settings:', data.settings);
+        const settings = data.settings || { showQuotes: true, showReminders: true };
+        
+        const quotesCheckbox = document.getElementById('quotes');
+        const remindersCheckbox = document.getElementById('remindersToggle');
+        
+        if (quotesCheckbox && remindersCheckbox) {
+            quotesCheckbox.checked = settings.showQuotes;
+            remindersCheckbox.checked = settings.showReminders;
+        }
+    });
+}
+
+function saveSettings() {
+    const quotesCheckbox = document.getElementById('quotes');
+    const remindersCheckbox = document.getElementById('remindersToggle');
+    
+    if (!quotesCheckbox || !remindersCheckbox) {
+        console.error('Settings checkboxes not found');
+        return;
+    }
+
+    const settings = {
+        showQuotes: quotesCheckbox.checked,
+        showReminders: remindersCheckbox.checked
+    };
+
+    chrome.storage.sync.set({ settings }, function() {
+        if (chrome.runtime.lastError) {
+            console.error('Error saving settings:', chrome.runtime.lastError);
+            return;
+        }
+
+        // Visual feedback
+        const saveButton = document.getElementById('save');
+        if (saveButton) {
+            saveButton.textContent = 'Saved!';
+            saveButton.style.backgroundColor = '#4CAF50';
+
+            // Notify content script
+            chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
+                if (tabs[0]) {
+                    chrome.tabs.sendMessage(tabs[0].id, {
+                        type: 'settingsUpdated',
+                        settings: settings
+                    });
+                }
+            });
+
+            // Reset button after 2 seconds
+            setTimeout(() => {
+                saveButton.textContent = 'Save Settings';
+                saveButton.style.backgroundColor = '';
+            }, 2000);
+        }
+    });
+}
 
 /* ==============================
    🚀 Reminder Management
@@ -45,10 +119,12 @@ function loadReminders() {
     chrome.storage.sync.get('customReminders', (data) => {
         const reminders = data.customReminders || [];
         const reminderList = document.getElementById('reminderList');
+        if (!reminderList) return;
+
         reminderList.innerHTML = '';
 
         if (reminders.length === 0) {
-            reminderList.innerHTML = `<p>No reminders yet. Add a new reminder!</p>`;
+            reminderList.innerHTML = '<p>No reminders yet. Add a new reminder!</p>';
             return;
         }
 
@@ -59,19 +135,21 @@ function loadReminders() {
             div.innerHTML = `
                 <span>${reminder.text} (${reminder.frequency})</span>
                 <span>${reminder.category}</span>
-                <button class="edit-reminder">Edit</button>
-                <button class="delete-reminder">Delete</button>
+                <div class="reminder-actions">
+                    <button class="edit-reminder">Edit</button>
+                    <button class="delete-reminder">Delete</button>
+                </div>
             `;
             reminderList.appendChild(div);
         });
     });
 }
 
-// Add reminder
-document.getElementById('addReminder').addEventListener('click', () => {
-    const text = document.getElementById('reminderText').value;
-    const frequency = document.getElementById('reminderFrequency').value;
-    const category = document.getElementById('reminderCategory').value;
+// Add reminder event listener
+document.getElementById('addReminder')?.addEventListener('click', () => {
+    const text = document.getElementById('reminderText')?.value;
+    const frequency = document.getElementById('reminderFrequency')?.value;
+    const category = document.getElementById('reminderCategory')?.value;
 
     if (!text) return;
 
@@ -86,60 +164,68 @@ document.getElementById('addReminder').addEventListener('click', () => {
         });
 
         chrome.storage.sync.set({ customReminders: reminders }, () => {
-            document.getElementById('reminderText').value = '';
+            if (document.getElementById('reminderText')) {
+                document.getElementById('reminderText').value = '';
+            }
             loadReminders();
             updateProgress();
         });
     });
 });
-// Event Delegation Attah click event to delete reminder list
-document.getElementById('reminderList').addEventListener('click', (event) => {
-    if (event.target.classList.contains('delete-reminder')) {
-        const index = event.target.parentElement.dataset.index;
+
+// Event delegation for reminder actions
+document.getElementById('reminderList')?.addEventListener('click', (event) => {
+    const target = event.target;
+    const reminderItem = target.closest('.reminder-item');
+    if (!reminderItem) return;
+
+    const index = parseInt(reminderItem.getAttribute('data-index'), 10);
+
+    if (target.classList.contains('delete-reminder')) {
         deleteReminder(index);
-    }
-})
-
-
-// Edit delegation Attach click event to edit reminder list
-document.getElementById('reminderList').addEventListener('click', (event) => {
-    if (event.target.classList.contains('edit-reminder')) {
-        const reminderItem  = event.target.closest( '.reminder-item');
-        if (!reminderItem) return;
-        const index = parseInt(reminderItem.getAttribute('data-index'), 10);
+    } else if (target.classList.contains('edit-reminder')) {
         editReminder(index);
     }
-})
+});
 
 function editReminder(index) {
     chrome.storage.sync.get('customReminders', (data) => {
-       let reminders = data.customReminders || [];
-        const newText = prompt('Edit your reminder: ', reminders[index]?.text || '');
+        let reminders = data.customReminders || [];
+        const reminder = reminders[index];
+        if (!reminder) return;
 
-        if (newText) {
-            reminders[index].text = newText;
-            chrome.storage.sync.set({ customReminders: reminders }, loadReminders);          
+        const newText = prompt('Edit your reminder:', reminder.text);
+        if (newText && newText.trim()) {
+            reminders[index] = {
+                ...reminder,
+                text: newText.trim(),
+                lastEdited: new Date().toISOString()
+            };
+            chrome.storage.sync.set({ customReminders: reminders }, loadReminders);
         }
-    })
+    });
 }
-// Event Delegation 
 
-// Delete reminder
-function deleteReminder (index) {
+function deleteReminder(index) {
     chrome.storage.sync.get('customReminders', (data) => {
         let reminders = data.customReminders || [];
         reminders.splice(index, 1);
-        chrome.storage.sync.set({ customReminders: reminders }, loadReminders);
+        chrome.storage.sync.set({ customReminders: reminders }, () => {
+            loadReminders();
+            updateProgress();
+        });
     });
-};
+}
 
 /* ==============================
    📝 Notes Management
    ============================== */
-   function loadNotes() {
+function loadNotes() {
     chrome.storage.sync.get('notes', (data) => {
         const notes = data.notes || [];
         const notesContainer = document.getElementById('notesContainer');
+        if (!notesContainer) return;
+
         notesContainer.innerHTML = '';
 
         if (notes.length === 0) {
@@ -165,18 +251,21 @@ function deleteReminder (index) {
     });
 }
 
-// Delete note function
-function deleteNote(index) {
-    chrome.storage.sync.get('notes', (data) => {
-        let notes = data.notes || [];
-        notes.splice(index, 1);
-        chrome.storage.sync.set({ notes }, () => {
-            loadNotes(); // Reload notes after deletion
-        });
-    });
-}
+// Event delegation for note actions
+document.getElementById('notesContainer')?.addEventListener('click', (event) => {
+    const target = event.target;
+    const noteItem = target.closest('.note-item');
+    if (!noteItem) return;
 
-// Edit note function
+    const index = parseInt(noteItem.getAttribute('data-index'), 10);
+
+    if (target.classList.contains('delete-note')) {
+        deleteNote(index);
+    } else if (target.classList.contains('edit-note')) {
+        editNote(index);
+    }
+});
+
 function editNote(index) {
     chrome.storage.sync.get('notes', (data) => {
         let notes = data.notes || [];
@@ -190,34 +279,18 @@ function editNote(index) {
                 text: newText.trim(),
                 lastEdited: new Date().toISOString()
             };
-            
-            chrome.storage.sync.set({ notes }, () => {
-                loadNotes(); // Reload notes after editing
-            });
+            chrome.storage.sync.set({ notes }, loadNotes);
         }
     });
 }
 
-// Event listener for note actions
-document.addEventListener('DOMContentLoaded', () => {
-    // Event delegation for note actions
-    document.getElementById('notesContainer').addEventListener('click', (event) => {
-        const noteItem = event.target.closest('.note-item');
-        if (!noteItem) return;
-
-        const index = parseInt(noteItem.getAttribute('data-index'), 10);
-        
-        if (event.target.classList.contains('delete-note')) {
-            deleteNote(index);
-        } else if (event.target.classList.contains('edit-note')) {
-            editNote(index);
-        }
+function deleteNote(index) {
+    chrome.storage.sync.get('notes', (data) => {
+        let notes = data.notes || [];
+        notes.splice(index, 1);
+        chrome.storage.sync.set({ notes }, loadNotes);
     });
-
-    // Load notes when popup opens
-    loadNotes();
-});
-
+}
 
 /* ==============================
    📊 Progress Tracking
@@ -227,6 +300,7 @@ function updateProgress() {
         const reminders = data.customReminders || [];
         const completions = data.reminderCompletions || {};
         const progressStats = document.getElementById('progressStats');
+        if (!progressStats) return;
 
         const stats = reminders.reduce((acc, reminder) => {
             const category = reminder.category;
@@ -248,150 +322,4 @@ function updateProgress() {
             </div>
         `).join('');
     });
-}
-
-function createFloatingPopup () {
-    const popup = document.createElement('div');
-    popup.style.cssText = `
-        position: fixed;
-        bottom: 20px;
-        right: 20px;
-        width: 250px;
-        padding: 15px;
-        background: white;
-        border-radius: 8px;
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-        font-family: Arial, sans-serif;
-    `;
-
-    // Title
-    const title = document.createElement('h3');
-    title.textContent = "Quick Add";
-    title.style.marginBottom = "10px";
-
-    // Reminder input
-    const reminderInput = document.createElement('input');
-    reminderInput.placeholder = "New Reminder";
-    reminderInput.style.width = "100%";
-
-    // Save button
-
-    const saveBtn = document.createElement('button');
-    saveBtn.textContent = "save";
-    saveBtn.style.cssText = `
-        background: linear-gradient(135deg, #6e8efb, #a777e3);
-        coloer: white;
-        padding: 8px;
-        border: none;
-        border-radius: 4px;
-        width: 100%;
-        margin-top: 5px;
-        cursor: pointer;
-    `
-
-    saveBtn.addEventListener('click', () => {
-        const reminderText = reminderInput.value.trim();
-        const noteText = noteInput.value.trim();
-
-        if (reminderText || noteText) {
-            chrome.storage.sync.get(['customReminders', 'notes'], (data) => {
-                const reminders = data.customReminders || [];
-                const notes = data.notes || [];
-
-                if (reminderText) {
-                    reminders.push({
-                        text: reminderText,
-                        frequency: 'daily',
-                        category: 'quick',
-                        created: new Date().toISOString(),
-                        completions: 0
-                    });
-                }
-                if (noteText) {
-                    notes.push({
-                        text: noteText,
-                        created: new DataTransfer.toISOString()
-                    });
-                }
-                chrome.storage.synnc.set({ customReminders: reminders, notes: notes}, () => {
-                    reminderInput.value = '';
-                    noteInput.value = '';
-                    popup.style.display = 'none';
-
-                });
-            });
-        }
-    });
-
-    // close Button 
-    const closeBtn = document.createElement('button');
-    closeBtn.textContent = "X";
-    closeBtn.style.cssText `
-    position: absolute;
-    top: 5px;
-    right: 5px;
-    background: red;
-    color: white;
-    border: none;
-    cursor: pointer;
-    `;
-
-    closeBtn.addEventListener('click', () => popup.remove());
-
-    popup.appendChild(title);
-    popup.appendChild(reminderInput);
-    popup.appendChild(noteInput);
-    popup.appendChild(saveBtn);
-    popup.appendChild(closeBtn);
-
-    document.body.appendChild(popup);
-}
-
-//open floating popup when extension icon is clicked
-chrome.browserAction.clicked.addListener(() => {
-    createFloatingPopup();
-})
-
-
-// Load saved settings whn popup opens
-document.addEventListener('DOMContentLoaded', function () {
-    // load saved settings
-    chrome.storage.sync.get('settings', function(data) {
-        const settings = data.settings || { showQuotes: true, showReminder: true };
-
-        // update checkbox states
-        document.getElementById('quotes').checked = settings.showQuotes;
-        document.getElementById('remindersToggle').checked = settings.showReminders;
-    });
-    document.getElementById('save').addEventListener('click', saveSettings);
-});
-
-// Save settings function
-
-function saveSettings() {
-    const settings = {
-        showQuotes: document.getElementById('quotes').checked,
-        showReminders: document.getElementById('remindersToggle').clicked
-    };
-    chrome.storage.sync.set({ settings }, function() {
-        const saveButton = document.getElementById('save');
-        const originalText = saveButton.textContent;
-        saveButton.textContent = 'Saved!';
-        saveButton.style.backgroundColor = '#4CAF50';
-
-        // Revert button text after 2 seconds
-
-        setTimeout(() => {
-            saveButton.textContent = originalText;
-            saveButton.style.backgroundColor = '';;
-        }, 2000);
-
-        // Notfy content script about settings change
-        chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
-            chrome.tabs.sendMessage(tabs[0].id, {
-                type: 'settingsUpdated',
-                settings: settings
-            })
-        })
-    })
 }

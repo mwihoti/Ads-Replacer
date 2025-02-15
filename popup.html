@@ -89,6 +89,7 @@
     .note-item button {
       margin-top: 5px;
     }
+    
   </style>
 </head>
 <body>
@@ -102,6 +103,7 @@
 
     <div id="settings" class="tab-content active">
       <h2>AdFriend Settings</h2>
+      <div class="setting-container">
       <label>
         <input type="checkbox" id="quotes" checked>
         Show Motivational Quotes
@@ -111,6 +113,7 @@
         Show Activity Reminders
       </label>
       <button id="save">Save Settings</button>
+    </div>
     </div>
 
     <div id="reminders" class="tab-content">
@@ -144,5 +147,48 @@
     </div>
   </div>
   <script src="popup.js"></script>
+  <script>
+
+const style = document.createElement('style');
+style.textContent = `
+    .tab-content#settings {
+        padding: 20px;
+    }
+
+    .tab-content#settings label {
+        display: block;
+        margin-bottom: 15px;
+        cursor: pointer;
+    }
+
+    .tab-content#settings input[type="checkbox"] {
+        margin-right: 10px;
+    }
+
+    #save {
+        width: 100%;
+        padding: 10px;
+        background: linear-gradient(135deg, #6e8efb, #a777e3);
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        margin-top: 20px;
+    }
+
+    #save:hover {
+        opacity: 0.9;
+    }
+
+    /* Add animation for save feedback */
+    @keyframes saveAnimation {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.05); }
+        100% { transform: scale(1); }
+    }
+`;
+document.head.appendChild(style);
+  </script>
 </body>
 </html>
