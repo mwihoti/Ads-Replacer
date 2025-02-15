@@ -351,3 +351,47 @@ function createFloatingPopup () {
 chrome.browserAction.clicked.addListener(() => {
     createFloatingPopup();
 })
+
+
+// Load saved settings whn popup opens
+document.addEventListener('DOMContentLoaded', function () {
+    // load saved settings
+    chrome.storage.sync.get('settings', function(data) {
+        const settings = data.settings || { showQuotes: true, showReminder: true };
+
+        // update checkbox states
+        document.getElementById('quotes').checked = settings.showQuotes;
+        document.getElementById('remindersToggle').checked = settings.showReminders;
+    });
+    document.getElementById('save').addEventListener('click', saveSettings);
+});
+
+// Save settings function
+
+function saveSettings() {
+    const settings = {
+        showQuotes: document.getElementById('quotes').checked,
+        showReminders: document.getElementById('remindersToggle').clicked
+    };
+    chrome.storage.sync.set({ settings }, function() {
+        const saveButton = document.getElementById('save');
+        const originalText = saveButton.textContent;
+        saveButton.textContent = 'Saved!';
+        saveButton.style.backgroundColor = '#4CAF50';
+
+        // Revert button text after 2 seconds
+
+        setTimeout(() => {
+            saveButton.textContent = originalText;
+            saveButton.style.backgroundColor = '';;
+        }, 2000);
+
+        // Notfy content script about settings change
+        chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
+            chrome.tabs.sendMessage(tabs[0].id, {
+                type: 'settingsUpdated',
+                settings: settings
+            })
+        })
+    })
+}

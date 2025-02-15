@@ -19,147 +19,55 @@ function getRandomItem(array) {
 }
 
 function createSplitWidget() {
-  const widgetContainer = document.createElement('div');
-  widgetContainer.style.cssText = `
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    padding: 15px;
-    margin: 10px;
-    border-radius: 8px;
-    background: white;
-    font-family: Arial, sans-serif;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    min-width: 300px;
-  `;
+  return new Promise((resolve) => {
+    chrome.storage.sync.get('settings', (data) => {
+      const settings = data.settings || { showQuotes: true, showReminders: true};
+      const widgetContainer = document.createElement('div');
+      widgetContainer.style.cssText = `
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        padding: 15px;
+        margin: 10px;
+        border-radius: 8px;
+        background: white;
+        font-family: Arial, sans-serif;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        min-width: 300px;
+      `;
+      // Only create and append quote section if quotes are enabled
+      if (settings.showQuotes) {
+        const quoteSection = document.createElement('div');
+        quoteSection.style.cssText = `
+        padding: 15px;
+        border-radius: 8px;
+        background: linear-gradient(135deg, #6e8efb, #a777e3);
+        color: white;
+        text-align: center;
+        `;
+        quoteSection.textContent = getRandomItem(quotes);
+        widgetContainer.appendChild(quoteSection);
+      }
 
-  // Quote Section
-  const quoteSection = document.createElement('div');
-  quoteSection.style.cssText = `
-    padding: 15px;
-    border-radius: 8px;
-    background: linear-gradient(135deg, #6e8efb, #a777e3);
-    color: white;
-    text-align: center;
-  `;
-  quoteSection.textContent = getRandomItem(quotes);
+      // Only create and append reminder section if reminder are enabled
+      if (settings.showReminders) {
+        const reminderSection = document.createElement('div');
+        reminderSection.style.cssText = `
+        padding: 15px;
+        border-radius: 8px;
+        background: linear-gradient(135deg, #FF8c42, #FFA07A);
+        color: whitw;
+        text-align: center;
+        `;
+        reminderSection.textContent = getRandomItem(reminders);
+        widgetContainer.appendChild(reminderSection);
+      }
+      resolve(widgetContainer);
+    })
+  })
 
-  // Reminder Section
-  const reminderSection = document.createElement('div');
-  reminderSection.style.cssText = `
-    padding: 15px;
-    border-radius: 8px;
-    background: linear-gradient(135deg, #FF8C42, #FFA07A);
-    color: white;
-    text-align: center;
-  `;
-  reminderSection.textContent = getRandomItem(reminders);
-
-  // Quick Add Section
-  const quickAddSection = document.createElement('div');
-  quickAddSection.style.cssText = `
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    padding: 10px;
-    border-radius: 8px;
-    background: #f5f5f5;
-  `;
-
-  // Quick Add Reminder
-  const reminderInput = document.createElement('input');
-  reminderInput.placeholder = '+ Add Quick Reminder';
-  reminderInput.style.cssText = `
-    padding: 8px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    margin-bottom: 5px;
-  `;
-
-  // Quick Add Note
-  const noteInput = document.createElement('textarea');
-  noteInput.placeholder = '+ Add Note';
-  noteInput.style.cssText = `
-    padding: 8px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    resize: vertical;
-    min-height: 60px;
-  `;
-
-  // Save Button
-  const saveButton = document.createElement('button');
-  saveButton.textContent = 'Save';
-  saveButton.style.cssText = `
-    padding: 8px;
-    background: linear-gradient(135deg, #6e8efb, #a777e3);
-    color: white;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-  `;
-
-
-  saveButton.addEventListener('click', () => {
-    const reminderText = reminderInput.value;
-    const noteText = noteInput.value;
-
-    if (reminderText || noteText) {
-      chrome.storage.sync.get(['customReminders', 'notes'], (data) => {
-        const reminders = data.customReminders || [];
-        const notes = data.notes || [];
-
-        if (reminderText) {
-          reminders.push({
-            text: reminderText,
-            frequency: 'daily',
-            category: 'quick',
-            created: new Date().toISOString(),
-            completions: 0
-          });
-        }
-
-        if (noteText) {
-          notes.push({
-            text: noteText,
-            created: new Date().toISOString(),
-            associated_reminder: reminderText || null
-          });
-        }
-
-        chrome.storage.sync.set({ 
-          customReminders: reminders,
-          notes: notes 
-        }, () => {
-          reminderInput.value = '';
-          noteInput.value = '';
-          
-          // Show success message
-          const success = document.createElement('div');
-          success.textContent = 'Saved!';
-          success.style.cssText = `
-            color: green;
-            text-align: center;
-            padding: 5px;
-          `;
-          quickAddSection.appendChild(success);
-          setTimeout(() => success.remove(), 2000);
-        });
-      });
-    }
-  });
-
-  // Assemble the widget
-  quickAddSection.appendChild(reminderInput);
-  quickAddSection.appendChild(noteInput);
-  quickAddSection.appendChild(saveButton);
-
-  widgetContainer.appendChild(quoteSection);
-  widgetContainer.appendChild(reminderSection);
-  widgetContainer.appendChild(quickAddSection);
-
-  return widgetContainer;
 }
+  
 
 function updateStats(newStats) {
   chrome.storage.sync.get(['stats', 'currentPageStats'], (data) => {
@@ -188,10 +96,12 @@ function handleReminderCompletion(reminderText) {
     chrome.storage.sync.set({ reminderCompletions });
   });
 }
-
-function replaceAds() {
-  chrome.storage.sync.get('settings', (data) => {
+async function replaceAds() {
+  chrome.storage.sync.get('settings', async (data) => {
     const settings = data.settings || { showQuotes: true, showReminders: true };
+    
+    // Only proceed if at least one feature is enabled
+    if (!settings.showQuotes && !settings.showReminders) return;
     
     const adSelectors = [
       '[class*="ad-"]',
@@ -210,26 +120,35 @@ function replaceAds() {
       remindersShown: 0
     };
     
-    adElements.forEach((ad) => {
-      if (ad.dataset.processed) return;
+    for (const ad of adElements) {
+      if (ad.dataset.processed) continue;
       
-      if (settings.showQuotes || settings.showReminders) {
-        const widget = createSplitWidget();
+      try {
+        const widget = await createSplitWidget(); // Add await here
         ad.parentNode.replaceChild(widget, ad);
         
         newStats.adsReplaced++;
         if (settings.showQuotes) newStats.quotesShown++;
         if (settings.showReminders) newStats.remindersShown++;
+        
+        ad.dataset.processed = 'true';
+      } catch (error) {
+        console.error('Error replacing ad:', error);
       }
-      
-      ad.dataset.processed = 'true';
-    });
+    }
     
     if (newStats.adsReplaced > 0) {
       updateStats(newStats);
     }
   });
 }
+
+// Add message listener for settings updates
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.type === 'settingsUpdated') {
+    window.location.reload();
+  }
+});
 
 // Initial replacement
 replaceAds();
@@ -240,8 +159,6 @@ observer.observe(document.body, {
   childList: true,
   subtree: true
 });
-
-// Add this to your content.js file
 
 function createFloatingIcon() {
   // Create the floating icon
