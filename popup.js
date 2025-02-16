@@ -305,21 +305,92 @@ function updateProgress() {
         const stats = reminders.reduce((acc, reminder) => {
             const category = reminder.category;
             if (!acc[category]) {
-                acc[category] = { total: 0, completed: 0 };
+                acc[category] = { total: 0, completed: 0, reminders: [] };
             }
             acc[category].total++;
-            acc[category].completed += completions[reminder.text] || 0;
+            acc[category].completed += completions[reminder.text] ? 1 : 0;
+            acc[category].reminders.push({
+                text: reminder.text,
+                frequency: reminder.frequency,
+                isCompleted: !!completions[reminder.text]
+            });
             return acc;
         }, {});
 
-        progressStats.innerHTML = Object.entries(stats).map(([category, stat]) => `
+        progressStats.innerHTML = Object.entries(stats).map(([category, data]) => `
             <div class="progress-container">
-                <h3>${category}</h3>
-                <div class="progress-bar">
-                    <div class="progress-fill" style="width: ${(stat.completed / stat.total) * 100}%"></div>
+                <h3 class="text-lg font-bold mb-2 capitalize">${category}</h3>
+                <div class="progress-bar mb-2">
+                    <div class="progress-fill" style="width: ${(data.completed / data.total) * 100}%"></div>
                 </div>
-                <p>Completed: ${stat.completed} / ${stat.total}</p>
+                <p class="mb-4">Completed: ${data.completed} / ${data.total}</p>
+                <div class="reminders-list space-y-2">
+                    ${data.reminders.map(reminder => `
+                        <div class="reminder-progress-item flex-items-center justify-between p-2 bg-gray-50 rounded">
+                            <div class="flex items-center gap-2">
+                                <input type="checkbox"
+                                    class="completion-checkbox"
+                                    data-reminder="${reminder.text}"
+                                    ${reminder.isCompleted ? 'checked' : ''}
+                                >
+                                <div>
+                                    <p class="font-medium">${reminder.text}</p>
+                                    <small class="text-gray-500"> ${reminder.frequency} </small>
+                                </div>
+                            </div>
+                            <span class="status-badge ${reminder.isCompleted ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}
+                            px-2 py-1 rounded-full text-sm">
+                                    ${reminder.isCompleted ? 'completed' : 'pending'}
+                            </span>
+                            </div>
+                        `).join('')}
+                </div>
+                <p>Completed: ${data.completed} / ${data.total}</p>
             </div>
         `).join('');
+        // Event listeneres to checkboxes
+        document.querySelectorAll('.completion-checkbox').forEach(checkbox => {
+            checkbox.addEventListener('change', function() {
+                const reminderText = this.dataset.reminder;
+                updateReminderCompletion(reminderText, this.checked);
+            });
+        });
+
     });
+}
+
+function updateReminderCompletion(reminderText, isCompleted) {
+    chrome.storage.sync.get('remindersCompletions', (data) => {
+        const completions = data.reminderCompletions || {};
+
+        if (isCompleted) {
+            completions[reminderText] = new Date().toISOString();
+
+        } else {
+            delete completions[reminderText];
+        }
+
+        chrome.storage.sync.set({ reminderCompletions: completions  }, () => {
+            updateProgress();
+
+            // show feedback
+
+            const feedback = document.createElement('div');
+            feedback.className = 'feedback-message';
+            feedback.textContent = isCompleted ? '✅ Marked as complete!' : '↩️ Marked as pending';
+            feedback.style.cssText = `
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: ${isCompleted ? '#4cAF50' : '#FF9800'};
+            color: white;
+            padding: 10px 20px;
+            border-radius: 4px;
+            animation: slideIn 0.3s ease;
+            `;
+            document.body.appendChild(feedback);
+            setTimeout(() => feedback.remove(), 2000);
+        });
+        
+    })
 }
