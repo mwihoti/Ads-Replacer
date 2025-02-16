@@ -23,19 +23,61 @@ const DEFAULT_REMINDERS = [
 
 // Keep track of used reminders to prevent repetition
 let usedReminders = new Set();
+let usedQuotes = new Set();
 
 // Modified getRandomItem to handle both custom and default items with better distribution
 function getRandomItem(type) {
   return new Promise((resolve) => {
     if (type === 'quote') {
-      resolve(DEFAULT_QUOTES[Math.floor(Math.random() * DEFAULT_QUOTES.length)]);
+      chrome.storage.sync.get('notes', (data) => {
+        const customNotes = data.notes || [];
+        let availableQuotes = [];
+
+        // Changed condition to < 2 to include default quotes when there's only one custom note
+        if (customNotes.length < 2) {
+          // Add custom notes first
+          availableQuotes = customNotes.map(n => n.text);
+          
+          // Add default quotes that haven't been used
+          DEFAULT_QUOTES.forEach(quote => {
+            if (!usedQuotes.has(quote)) {
+              availableQuotes.push(quote);
+            }
+          });
+        } else {
+          // Use only custom notes if we have 2 or more
+          availableQuotes = customNotes.map(n => n.text);
+        }
+
+        // Filter out already used quotes
+        availableQuotes = availableQuotes.filter(q => !usedQuotes.has(q));
+
+        // If all quotes have been used, reset the tracking
+        if (availableQuotes.length === 0) {
+          usedQuotes.clear();
+          // Changed condition to match the above logic
+          availableQuotes = customNotes.length < 2
+            ? [...customNotes.map(n => n.text), ...DEFAULT_QUOTES]
+            : customNotes.map(n => n.text);
+        }
+
+        // Select a random quote from available ones
+        const randomIndex = Math.floor(Math.random() * availableQuotes.length);
+        const selectedQuote = availableQuotes[randomIndex];
+        
+        // Track this quote as used
+        usedQuotes.add(selectedQuote);
+        
+        resolve(selectedQuote);
+      });
+      
     } else if (type === 'reminder') {
       chrome.storage.sync.get('customReminders', (data) => {
         const customReminders = data.customReminders || [];
         let availableReminders = [];
 
-        // If we have less than 2 custom reminders, combine with default reminders
-        if (customReminders.length < 2) {
+        // If we have less than 1 custom reminders, combine with default reminders
+        if (customReminders.length < 1) {
           // Add custom reminders first
           availableReminders = customReminders.map(r => r.text);
           
@@ -129,16 +171,19 @@ async function createSplitWidget() {
 // Reset used reminders when page reloads or settings change
 function resetReminderTracking() {
   usedReminders.clear();
+  usedQuotes.clear();
 }
 
 // Modified message listener to handle resets
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message.type === 'settingsUpdated' || message.type === 'remindersUpdated') {
+  if (message.type === 'settingsUpdated' || message.type === 'remindersUpdated' || message.type === 'notesUpdated' ) {
     resetReminderTracking();
     window.location.reload();
   }
 });
 
+// Initialize 
+resetReminderTracking();
 // Modified replaceAds function to handle the new reminder system
 async function replaceAds() {
   chrome.storage.sync.get('settings', async (data) => {
